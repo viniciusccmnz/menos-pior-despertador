@@ -1,0 +1,28 @@
+name: Manter o site acordado
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  visitar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Visitar o site
+        run: curl -fsS -o /dev/null --retry 3 --retry-delay 20 --max-time 90 https://menos-pior.onrender.com/
+
+      # O GitHub desliga agendamentos de repositorio parado por 60 dias.
+      - name: Manter o agendamento ativo
+        if: github.event.schedule && endsWith(github.run_id, '00')
+        run: |
+          git init -q .
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git fetch -q origin main
+          git checkout -q -b main FETCH_HEAD
+          git -c user.name="despertador" -c user.email="actions@users.noreply.github.com" commit -q --allow-empty -m "Mantem o agendamento ativo"
+          git push -q origin main
